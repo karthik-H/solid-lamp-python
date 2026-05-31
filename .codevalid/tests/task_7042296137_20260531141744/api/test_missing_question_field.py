@@ -1,13 +1,17 @@
-from unittest.mock import Mock
-
 import pytest
 
 from app import create_app
 
 
 @pytest.fixture()
-def app():
-    return create_app({"TESTING": True})
+def app(tmp_path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}",
+        }
+    )
+    yield app
 
 
 @pytest.fixture()
@@ -15,10 +19,18 @@ def client(app):
     return app.test_client()
 
 
-
 def test_missing_question_field(client, monkeypatch):
-    get_client = Mock()
-    monkeypatch.setattr("app.routes.ask._get_openai_client", get_client)
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    from app.routes import ask as ask_module
+
+    called = {"value": False}
+
+    def fake_get_client():
+        called["value"] = True
+        raise AssertionError("_get_openai_client should not be called")
+
+    monkeypatch.setattr(ask_module, "_get_openai_client", fake_get_client)
 
     response = client.post(
         "/api/ask",
@@ -33,4 +45,4 @@ def test_missing_question_field(client, monkeypatch):
 
     assert response.status_code == 400
     assert response.get_json() == {"error": "question is required"}
-    get_client.assert_not_called()
+    assert called["value"] is False

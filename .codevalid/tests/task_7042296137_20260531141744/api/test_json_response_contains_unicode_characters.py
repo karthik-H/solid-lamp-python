@@ -6,16 +6,15 @@ import pytest
 from app import create_app
 
 
-SCHEMA = {
-    "type": "object",
-    "properties": {"answer": {"type": "string"}},
-    "required": ["answer"],
-}
-
-
 @pytest.fixture()
-def app():
-    return create_app({"TESTING": True})
+def app(tmp_path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'test.db'}",
+        }
+    )
+    yield app
 
 
 @pytest.fixture()
@@ -23,32 +22,38 @@ def client(app):
     return app.test_client()
 
 
-
-def _openai_response(content: str):
-    return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
-    )
-
-
-
 def test_json_response_contains_unicode_characters(client, monkeypatch):
     monkeypatch.setenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    mock_client = Mock()
-    mock_client.chat.completions.create.return_value = _openai_response(
-        '{"answer": "こんにちは"}'
+    mock_create = Mock(
+        return_value=SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content='{"answer": "こんにちは"}')
+                )
+            ]
+        )
+    )
+    mock_client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(create=mock_create)
+        )
     )
 
-    get_client = Mock(return_value=mock_client)
-    monkeypatch.setattr("app.routes.ask._get_openai_client", get_client)
+    from app.routes import ask as ask_module
 
-    response = client.post(
-        "/api/ask",
-        json={
-            "question": "How do you say hello in Japanese?",
-            "structure": SCHEMA,
+    monkeypatch.setattr(ask_module, "_get_openai_client", Mock(return_value=mock_client))
+
+    payload = {
+        "question": "How do you say hello in Japanese?",
+        "structure": {
+            "type": "object",
+            "properties": {"answer": {"type": "string"}},
+            "required": ["answer"],
         },
-    )
+    }
+
+    response = client.post("/api/ask", json=payload)
 
     assert response.status_code == 200
     assert response.get_json() == {"answer": "こんにちは"}
