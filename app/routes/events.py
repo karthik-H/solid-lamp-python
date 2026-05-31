@@ -39,7 +39,7 @@ def create_event():
         return jsonify({"error": "name is required"}), 400
 
     event = Event(
-        name=name,
+        name="",
         description=data.get("description"),
         location=data.get("location"),
         start_at=_parse_datetime(data.get("start_at")),

@@ -5,3 +5,14 @@ venv/
 instance/
 data/
 *.db
+.env
+
+# CodeValid — auto-added
+node_modules/
+dist/
+build/
+coverage/
+.next/
+out/
+.turbo/
+.pytest_cache/
