@@ -36,9 +36,10 @@ def create_app(config=None):
 
     db.init_app(app)
 
-    from app.routes import ask_bp, events_bp, tasks_bp
+    from app.routes import ask_bp, deep_analysis_bp, events_bp, tasks_bp
 
     app.register_blueprint(ask_bp, url_prefix="/api/ask")
+    app.register_blueprint(deep_analysis_bp, url_prefix="/api/deep-analysis")
     app.register_blueprint(events_bp, url_prefix="/api/events")
     app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
 

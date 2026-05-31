@@ -5,7 +5,6 @@ venv/
 instance/
 data/
 *.db
-.env
 
 # CodeValid — auto-added
 node_modules/
